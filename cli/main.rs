@@ -6,6 +6,7 @@ use std::io::Read;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use anyhow::anyhow;
+use xshell::{cmd, Shell};
 
 type Constr = &'static str;
 
@@ -50,51 +51,67 @@ impl Rule {
 }
 
 // Parsed schema
-type Buildspace = HashMap<String, Rule>;
+#[derive(Debug)]
+struct Buildspace { 
+    tmap: HashMap<String, Rule>
+}
 
 impl From<Schema> for Buildspace {
     fn from(schema: Schema) -> Self {
-        let mut bs = HashMap::with_capacity(schema.package.len());
+        let mut tmap = HashMap::with_capacity(schema.package.len());
         for node in schema.package.into_iter() {
             let (artifacts, sources, commands) = node.into();
             for out in artifacts.into_iter() {
                 // not the most efficient way of doing this because we copy `sources` and `commands` a bunch of times, 
                 // instead of storing a ref to them or something
-                bs.insert(out, Rule::new(commands.clone(), sources.clone()));
+                tmap.insert(out, Rule::new(commands.clone(), sources.clone()));
             }
         }
-        bs
+        Buildspace { tmap }
     }
 }
 
+impl Buildspace {
+    fn resolve(&self, target: &str) -> Vec<u8> {
+        match self.tmap.get(target) {
+            // artifact source
+            Some(rule) => {
+                // compute the current signature
+                let mut input_hashes = vec![];
+                for dep in rule.deps.iter() {
+                    input_hashes.append(&mut self.resolve(dep));
+                }
+                let current_sign = get_signature(input_hashes);
 
-// We determine this by maintaining hash tokens of each source file's content
-// TODO: match star patterns in the fname path, such as /* and /**
-fn outdated<P: AsRef<Path>>(fname: P) -> Result<bool, anyhow::Error> {
-    // hash of the file
-    let current: [u8; 16] = md5::compute(fs::read(&fname)?).into();
+                // compute the last signature
+                let tokenp = Path::new(SMELT_STORE).join("/sign/").join(&target);
+                let past_sign = match fs::read(&tokenp) {
+                    Ok(content) => content,
+                    // in case the token doesnt already exist it is generated
+                    Err(e) => {
+                        fs::create_dir_all(tokenp.parent().unwrap());
+                        vec![]
+                    }
+                };
 
-    // path to its token
-    let tokenp = Path::new(SMELT_STORE).join("hash/").join(fname);
+                // check if out-of-date
+                if (current_sign != past_sign) {
+                }
 
-    let past = match fs::read(&tokenp) {
-        Ok(content) => content,
-        // in case the token doesnt already exist it is generated
-        Err(e) => {
-            fs::create_dir_all(tokenp.parent().ok_or(anyhow!("Could not generate token"))?);
-            fs::write::<PathBuf, [u8; 16]>(tokenp, current.into())?;
-            return Ok(true);
+                // if up-to-date
+                Vec::from(current_sign)
+            }
+            // raw source
+            None => {
+                get_signature(fs::read(target).unwrap())
+            }
         }
-    };
-
-    // if both hashes dont match, a new hash is recalculated and we rebuild
-    if current != *past {
-        fs::write::<PathBuf, [u8; 16]>(tokenp, current.into())?;
-        return Ok(true)
     }
+}
 
-    // otherwise keep it as it is
-    Ok(false)
+fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
+    let x: [u8; 16] = md5::compute(data).into();
+    Vec::from(x)
 }
 
 fn main() {
@@ -105,7 +122,7 @@ fn main() {
         panic!("Unsupported version '{0}', required '{1}'", schema.version, VERSION);
     }
     let buildspace = Buildspace::from(schema);
-    println!("{:?}", buildspace);
-    println!("{:?}", outdated("src/cat.c"));
+    println!("{:?}", &buildspace);
+    buildspace.resolve("hello");
     println!("Done!");
 }

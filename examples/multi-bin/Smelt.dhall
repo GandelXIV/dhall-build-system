@@ -17,7 +17,6 @@ let SmeltSchema: Type = {
 {- Defintion -}
 
 let build = \(target: Text) ->
-    let output = "bin/${target}"
     let input = "src/${target}.c"
     in {
         art=[target],
