@@ -9,8 +9,9 @@ edition = "2021"
 name = "smelt-cli"
 path = "cli/main.rs"
 
-[lib]
-name = "smelt"
-path = "engine/lib.rs"
-
 [dependencies]
+anyhow = "1.0.69"
+md5 = "0.7.0"
+serde = "1.0.152"
+serde_dhall = "0.12.1"
+sha256 = "1.1.2"
