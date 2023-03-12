@@ -1,6 +1,6 @@
 {- List of targets to build -}
 
-let SmeltNode = ./SmeltNode.dhall
+let SmeltNode = ./Node.dhall
 
 let SmeltPackage: Type = List SmeltNode
 

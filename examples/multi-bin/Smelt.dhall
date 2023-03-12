@@ -1,17 +1,14 @@
-let SmeltSchema = ../../imports/SmeltSchema.dhall
+let SmeltSchema = ../../imports/core/Schema.dhall
 
-let build = \(target: Text) ->
-    let input = "src/${target}.c"
-    in {
-        art=[target],
-        src=[input],
-        cmd=["gcc ${input} -o ${target}"]
-    }
+let build =
+      \(target : Text) ->
+        let input = "src/${target}.c"
 
-let pkg = [
-    build "hello",
-    build "cat",
-    build "demo"
-]
+        in  { art = [ target ]
+            , src = [ input ]
+            , cmd = [ "gcc ${input} -o ${target}" ]
+            }
 
-in { version="testing", package=pkg } : SmeltSchema
+let pkg = [ build "hello", build "cat", build "demo" ]
+
+in  { version = "testing", package = pkg } : SmeltSchema

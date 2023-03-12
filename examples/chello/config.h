@@ -1,1 +1,1 @@
-const char* MESSAGE = "Hello World!";
+static char* MESSAGE = "Hello World!";
