@@ -1,4 +1,2 @@
 *.rs linguist-detectable=false
 *.dhall linguist-language=dhall
-*.c linguist-language=C
-*.h linguist-language=C
