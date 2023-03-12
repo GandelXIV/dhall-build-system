@@ -1,7 +1,8 @@
+{- imports -}
 let SmeltSchema = ../../imports/SmeltSchema.dhall
-
 let spaceJoin = ../../imports/spaceJoin.dhall
 
+{- generates an object %name%.o from %name%.c and %headers% using gcc -}
 let compile_object =
       \(name : Text) ->
       \(headers : List Text) ->
@@ -14,6 +15,7 @@ let compile_object =
             , cmd = [ "gcc -c ${name}.c -o ${out}" ]
             }
 
+{- links objects into an output using the gcc linker -}
 let link_objects =
       \(output : Text) ->
       \(objects : List Text) ->

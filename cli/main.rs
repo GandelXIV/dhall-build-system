@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_dhall;
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 use std::{self, collections::HashMap};
 
