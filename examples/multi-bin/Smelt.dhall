@@ -1,20 +1,4 @@
-{- prelude -}
-
-
-let SmeltNode: Type = {
-    art: List Text,
-    src: List Text,
-    cmd: List Text,
-}
-
-let SmeltPackage: Type = List SmeltNode
-
-let SmeltSchema: Type = {
-    version: Text,
-    package: SmeltPackage
-}
-
-{- Defintion -}
+let SmeltSchema = ../../imports/SmeltSchema.dhall
 
 let build = \(target: Text) ->
     let input = "src/${target}.c"

@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_dhall;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{self, collections::HashMap};
 
@@ -14,6 +14,8 @@ const SMELT_STORE: Constr = ".smelt/";
 const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
 
 // Smeltfile types, these model the dhall ones
+
+// imports/SmeltNode.dhall
 #[derive(Deserialize, Debug)]
 struct Node {
     art: Vec<String>,
@@ -29,6 +31,7 @@ impl Into<ExplodedNode> for Node {
     }
 }
 
+// imports/SmeltSchema.dhall
 #[derive(Deserialize)]
 struct Schema {
     version: String,
@@ -109,7 +112,7 @@ impl Buildspace {
             }
         };
 
-        get_signature(fs::read(target).unwrap())
+        get_signature(fs::read(target).expect(&format!("Target '{}' not found!", target)))
     }
 
     fn build(&self, target: &str) -> Result<(), anyhow::Error> {
