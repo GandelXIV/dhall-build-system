@@ -1,2 +1,2 @@
 # smelt
-A build system
+A build system. This is stil WIP, but will update.

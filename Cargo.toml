@@ -12,6 +12,5 @@ path = "cli/main.rs"
 [dependencies]
 anyhow = "1.0.69"
 md5 = "0.7.0"
-run_shell = "0.1.13"
 serde = "1.0.152"
 serde_dhall = "0.12.1"
