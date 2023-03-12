@@ -16,5 +16,7 @@ let workdir =
           ([]: List Text)
 
 
-in workdir "lib/" ["./configure", "make"]
-{- in  workdir -}
+{- For testing -}
+{- in workdir "lib/" ["./configure", "make"] -}
+
+in  workdir
