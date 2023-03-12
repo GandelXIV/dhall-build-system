@@ -1,12 +1,10 @@
 use serde::Deserialize;
 use serde_dhall;
-use std::{self, collections::HashMap};
 use std::fs;
-use std::io::Read;
-use std::error::Error;
-use std::path::{Path, PathBuf};
-use anyhow::anyhow;
-use xshell::{cmd, Shell};
+use std::io::Write;
+use std::path::Path;
+use std::process::Command;
+use std::{self, collections::HashMap};
 
 type Constr = &'static str;
 
@@ -52,8 +50,8 @@ impl Rule {
 
 // Parsed schema
 #[derive(Debug)]
-struct Buildspace { 
-    tmap: HashMap<String, Rule>
+struct Buildspace {
+    tmap: HashMap<String, Rule>,
 }
 
 impl From<Schema> for Buildspace {
@@ -62,7 +60,7 @@ impl From<Schema> for Buildspace {
         for node in schema.package.into_iter() {
             let (artifacts, sources, commands) = node.into();
             for out in artifacts.into_iter() {
-                // not the most efficient way of doing this because we copy `sources` and `commands` a bunch of times, 
+                // not the most efficient way of doing this because we copy `sources` and `commands` a bunch of times,
                 // instead of storing a ref to them or something
                 tmap.insert(out, Rule::new(commands.clone(), sources.clone()));
             }
@@ -76,6 +74,7 @@ impl Buildspace {
         match self.tmap.get(target) {
             // artifact source
             Some(rule) => {
+                println!("[CHECKING ARTIFACT] {}", target);
                 // compute the current signature
                 let mut input_hashes = vec![];
                 for dep in rule.deps.iter() {
@@ -84,28 +83,41 @@ impl Buildspace {
                 let current_sign = get_signature(input_hashes);
 
                 // compute the last signature
-                let tokenp = Path::new(SMELT_STORE).join("/sign/").join(&target);
+                let tokenp = Path::new(SMELT_STORE).join("sign/").join(&target);
                 let past_sign = match fs::read(&tokenp) {
                     Ok(content) => content,
                     // in case the token doesnt already exist it is generated
-                    Err(e) => {
-                        fs::create_dir_all(tokenp.parent().unwrap());
+                    Err(_e) => {
+                        fs::create_dir_all(tokenp.parent().unwrap()).unwrap();
                         vec![]
                     }
                 };
 
                 // check if out-of-date
-                if (current_sign != past_sign) {
+                if current_sign != past_sign || fs::metadata(target).is_err() {
+                    println!("[BUILDING] {}", target);
+                    exec(&rule.run);
+                    fs::write(tokenp, current_sign).unwrap();
+                } else {
+                    // if up-to-date
+                    println!("[SKIPPING] {}", target);
                 }
-
-                // if up-to-date
-                Vec::from(current_sign)
             }
             // raw source
             None => {
-                get_signature(fs::read(target).unwrap())
+                println!("[RETRIEVING SOURCE] {}", target);
             }
+        };
+
+        get_signature(fs::read(target).unwrap())
+    }
+
+    fn build(&self, target: &str) -> Result<(), anyhow::Error> {
+        if !self.tmap.contains_key(target) {
+            let _foo = anyhow::anyhow!("No target {} found", target);
         }
+        self.resolve(target);
+        Ok(())
     }
 }
 
@@ -114,15 +126,34 @@ fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
     Vec::from(x)
 }
 
+fn exec(script: &[String]) {
+    for line in script {
+        println!("[RUNNING] {}", line);
+        let out = Command::new("sh").arg("-c").arg(line).output().unwrap();
+        std::io::stdout().write_all(&out.stdout).unwrap();
+        std::io::stderr().write_all(&out.stderr).unwrap();
+    }
+}
+
 fn main() {
     let schema: Schema = serde_dhall::from_file(SMELT_FILE)
         .parse()
         .expect(ERROR_PARSE_SMELTFILE);
     if schema.version != VERSION {
-        panic!("Unsupported version '{0}', required '{1}'", schema.version, VERSION);
+        panic!(
+            "Unsupported version '{0}', required '{1}'",
+            schema.version, VERSION
+        );
     }
     let buildspace = Buildspace::from(schema);
-    println!("{:?}", &buildspace);
-    buildspace.resolve("hello");
+    if std::env::args().len() == 1 {
+        println!("[ERROR] No targets specified!");
+        return
+    }
+    for (i, argument) in std::env::args().enumerate() {
+        if i != 0 {
+            buildspace.build(&argument).unwrap();
+        }
+    }
     println!("Done!");
 }
