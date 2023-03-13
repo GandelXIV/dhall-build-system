@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use serde_dhall;
-use std::fs;
+use std::{fs, any};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
@@ -73,7 +73,7 @@ impl From<Schema> for Buildspace {
 }
 
 impl Buildspace {
-    fn resolve(&self, target: &str) -> Vec<u8> {
+    fn resolve(&self, target: &str) -> Result<Vec<u8>, anyhow::Error> {
         match self.tmap.get(target) {
             // artifact source
             Some(rule) => {
@@ -81,7 +81,7 @@ impl Buildspace {
                 // compute the current signature
                 let mut input_hashes = vec![];
                 for dep in rule.deps.iter() {
-                    input_hashes.append(&mut self.resolve(dep));
+                    input_hashes.append(&mut self.resolve(dep)?);
                 }
                 let current_sign = get_signature(input_hashes);
 
@@ -91,7 +91,7 @@ impl Buildspace {
                     Ok(content) => content,
                     // in case the token doesnt already exist it is generated
                     Err(_e) => {
-                        fs::create_dir_all(tokenp.parent().unwrap()).unwrap();
+                        fs::create_dir_all(tokenp.parent().unwrap())?;
                         vec![]
                     }
                 };
@@ -99,8 +99,8 @@ impl Buildspace {
                 // check if out-of-date
                 if current_sign != past_sign || fs::metadata(target).is_err() {
                     println!("[BUILDING] {}", target);
-                    exec(&rule.run);
-                    fs::write(tokenp, current_sign).unwrap();
+                    exec(&rule.run)?;
+                    fs::write(tokenp, current_sign)?;
                 } else {
                     // if up-to-date
                     println!("[SKIPPING] {}", target);
@@ -112,14 +112,14 @@ impl Buildspace {
             }
         };
 
-        get_signature(fs::read(target).expect(&format!("Target '{}' not found!", target)))
+        Ok(get_signature(fs::read(target)?))
     }
 
     fn build(&self, target: &str) -> Result<(), anyhow::Error> {
         if !self.tmap.contains_key(target) {
             let _foo = anyhow::anyhow!("No target {} found", target);
         }
-        self.resolve(target);
+        self.resolve(target)?;
         Ok(())
     }
 }
@@ -129,13 +129,14 @@ fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
     Vec::from(x)
 }
 
-fn exec(script: &[String]) {
+fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     for line in script {
         println!("[RUNNING] {}", line);
-        let out = Command::new("sh").arg("-c").arg(line).output().unwrap();
-        std::io::stdout().write_all(&out.stdout).unwrap();
-        std::io::stderr().write_all(&out.stderr).unwrap();
+        let out = Command::new("sh").arg("-c").arg(line).output()?;
+        std::io::stdout().write_all(&out.stdout)?;
+        std::io::stderr().write_all(&out.stderr)?;
     }
+    Ok(())
 }
 
 fn main() {
