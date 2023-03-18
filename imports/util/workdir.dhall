@@ -4,7 +4,6 @@
     Usage example:
     let cmd = workdir "lib/" ["./configure", "make"]
 -}
-
 let workdir =
       \(dir : Text) ->
       \(commands : List Text) ->
@@ -12,11 +11,7 @@ let workdir =
           Text
           commands
           (List Text)
-          (\(x : Text) -> \(old : List Text) -> old # ["cd ${dir} && ${x}"])
-          ([]: List Text)
-
-
-{- For testing -}
-{- in workdir "lib/" ["./configure", "make"] -}
+          (\(x : Text) -> \(old : List Text) -> old # [ "cd ${dir} && ${x}" ])
+          ([] : List Text)
 
 in  workdir
