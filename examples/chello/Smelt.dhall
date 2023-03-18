@@ -3,6 +3,7 @@ let SmeltSchema = ../../imports/core/Schema.dhall
 
 let spaceJoin = ../../imports/util/spaceJoin.dhall
 
+{- Builds an object file with gcc -}
 let compile_object =
       \(name : Text) ->
       \(headers : List Text) ->
@@ -15,19 +16,31 @@ let compile_object =
             , cmd = [ "gcc -c ${name}.c -o ${out}" ]
             }
 
-let link_objects =
-      \(output : Text) ->
-      \(objects : List Text) ->
-        { art = [ output ]
-        , src = objects
-        , cmd = [ "gcc -o ${output} ${spaceJoin objects}" ]
-        }
+let objs = [ "main.o", "lib.o", "config.o" ]
 
+{- approach #1 -}
 let pkg1 =
-      [ link_objects "hello" [ "main.o", "lib.o", "config.o" ]
+      [ { art = [ "hello" ]
+        , src = objs
+        , cmd = [ "gcc ${spaceJoin objs} -o hello" ]
+        }
       , compile_object "main" [ "lib.h", "config.h" ]
       , compile_object "lib" [ "lib.h" ]
       , compile_object "config" [ "config.h" ]
       ]
 
-in  { version = "testing", package = pkg1 } : SmeltSchema
+{- apporach #2 -}
+let expand = ../../imports/util/expand.dhall
+
+let pkg2 =
+      expand
+        { art = [ "hello" ]
+        , cmd = [ "gcc ${spaceJoin objs} -o hello" ]
+        , src =
+          [ compile_object "main" [ "lib.h", "config.h" ]
+          , compile_object "lib" [ "lib.h" ]
+          , compile_object "config" [ "config.h" ]
+          ]
+        }
+
+in  { version = "testing", package = pkg2 } : SmeltSchema
