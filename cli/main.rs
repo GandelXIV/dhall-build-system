@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use serde_dhall;
-use std::{fs, any};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::{self, collections::HashMap};
+use std::fs;
 
 type Constr = &'static str;
 
@@ -152,7 +152,7 @@ fn main() {
     let buildspace = Buildspace::from(schema);
     if std::env::args().len() == 1 {
         println!("[ERROR] No targets specified!");
-        return
+        return;
     }
     for (i, argument) in std::env::args().enumerate() {
         if i != 0 {

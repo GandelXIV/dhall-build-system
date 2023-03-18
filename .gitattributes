@@ -1,2 +1,2 @@
-*.rs linguist-detectable=false
+*.rs linguist-detectable=true
 *.dhall linguist-language=dhall

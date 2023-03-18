@@ -1,0 +1,1 @@
+rm hello cat demo
