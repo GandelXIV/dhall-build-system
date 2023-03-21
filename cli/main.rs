@@ -53,11 +53,11 @@ impl Rule {
 
 // Parsed schema
 #[derive(Debug)]
-struct Buildspace {
+struct BuildGraph {
     tmap: HashMap<String, Rule>,
 }
 
-impl From<Schema> for Buildspace {
+impl From<Schema> for BuildGraph {
     fn from(schema: Schema) -> Self {
         let mut tmap = HashMap::with_capacity(schema.package.len());
         for node in schema.package.into_iter() {
@@ -68,24 +68,28 @@ impl From<Schema> for Buildspace {
                 tmap.insert(out, Rule::new(commands.clone(), sources.clone()));
             }
         }
-        Buildspace { tmap }
+        BuildGraph { tmap }
     }
 }
 
-impl Buildspace {
+impl BuildGraph {
     fn resolve(&self, target: &str) -> Result<Vec<u8>, anyhow::Error> {
         match self.tmap.get(target) {
             // artifact source
             Some(rule) => {
                 println!("[CHECKING ARTIFACT] {}", target);
-                // compute the current signature
+                // compute the current input signature
+
                 let mut input_hashes = vec![];
-                for dep in rule.deps.iter() {
+                for dep in rule.deps.iter() { // read all dependencies, can be slow
                     input_hashes.append(&mut self.resolve(dep)?);
                 }
+                // using the commands as an input makes the builds more correct
+                input_hashes.append(&mut get_signature(rule.run.join("")));
                 let current_sign = get_signature(input_hashes);
 
-                // compute the last signature
+                // find its token that holds the previous sign
+                // .smelt/sign/{full-filename-and-path}.md5
                 let mut token = Path::new(SMELT_STORE).join("sign/").join(&target).into_os_string();
                 token.push(".md5");
                 let token = PathBuf::from(token);
@@ -152,14 +156,14 @@ fn main() {
             schema.version, VERSION
         );
     }
-    let buildspace = Buildspace::from(schema);
+    let graph = BuildGraph::from(schema);
     if std::env::args().len() == 1 {
         println!("[ERROR] No targets specified!");
         return;
     }
     for (i, argument) in std::env::args().enumerate() {
         if i != 0 {
-            buildspace.build(&argument).unwrap();
+            graph.build(&argument).unwrap();
         }
     }
     println!("Done!");
