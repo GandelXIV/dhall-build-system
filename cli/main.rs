@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde_dhall;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{self, collections::HashMap};
 use std::fs;
@@ -86,12 +86,15 @@ impl Buildspace {
                 let current_sign = get_signature(input_hashes);
 
                 // compute the last signature
-                let tokenp = Path::new(SMELT_STORE).join("sign/").join(&target);
-                let past_sign = match fs::read(&tokenp) {
+                let mut token = Path::new(SMELT_STORE).join("sign/").join(&target).into_os_string();
+                token.push(".md5");
+                let token = PathBuf::from(token);
+
+                let past_sign = match fs::read(&token) {
                     Ok(content) => content,
                     // in case the token doesnt already exist it is generated
                     Err(_e) => {
-                        fs::create_dir_all(tokenp.parent().unwrap())?;
+                        fs::create_dir_all(token.parent().unwrap())?;
                         vec![]
                     }
                 };
@@ -100,7 +103,7 @@ impl Buildspace {
                 if current_sign != past_sign || fs::metadata(target).is_err() {
                     println!("[BUILDING] {}", target);
                     exec(&rule.run)?;
-                    fs::write(tokenp, current_sign)?;
+                    fs::write(token, current_sign)?;
                 } else {
                     // if up-to-date
                     println!("[SKIPPING] {}", target);
