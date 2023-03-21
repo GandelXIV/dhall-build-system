@@ -41,4 +41,38 @@ let _example0 =
                }
              ]
 
+let List/concat =
+      https://raw.githubusercontent.com/dhall-lang/dhall-lang/v21.1.0/Prelude/List/concat.dhall
+
+{-
+let _example1 =
+        assert
+      :     expand
+              { art = [ "A" ]
+              , cmd = [ "-" ]
+              , src =
+                  List/concat
+                    Node
+                    [ expand
+                        { art = [ "B" ]
+                        , cmd = [ "-" ]
+                        , src =
+                          [ { art = [ "C" ], cmd = [ "-" ], src = [ "c" ] }
+                          , { art = [ "D" ], cmd = [ "-" ], src = [ "d" ] }
+                          ]
+                        }
+                    , [ { art = [ "E" ], cmd = [ "-" ], src = [ "e" ] }
+                      , { art = [ "F" ], cmd = [ "-" ], src = [ "f" ] }
+                      ]
+                    ]
+              }
+        ===  [ { art = [ "A" ], cmd = [ "-" ], src = [ "B", "E", "F" ] }
+             , { art = [ "B" ], cmd = [ "-" ], src = [ "C", "D" ] }
+             , { art = [ "C" ], cmd = [ "-" ], src = [ "c" ] }
+             , { art = [ "D" ], cmd = [ "-" ], src = [ "d" ] }
+             , { art = [ "E" ], cmd = [ "-" ], src = [ "e" ] }
+             , { art = [ "F" ], cmd = [ "-" ], src = [ "f" ] }
+             ]
+-}
+
 in  expand
