@@ -112,10 +112,11 @@ impl BuildGraph {
                     // if up-to-date
                     println!("[SKIPPING] {}", target);
                 }
+                println!();
             }
             // raw source
             None => {
-                println!("[RETRIEVING SOURCE] {}", target);
+                println!("---> [RETRIEVING SOURCE] {}", target);
             }
         };
 
@@ -138,7 +139,7 @@ fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
 
 fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     for line in script {
-        println!("[RUNNING] {}", line);
+        println!("---> [RUNNING] {}", line);
         let out = Command::new("sh").arg("-c").arg(line).output()?;
         std::io::stdout().write_all(&out.stdout)?;
         std::io::stderr().write_all(&out.stderr)?;
