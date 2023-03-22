@@ -1,4 +1,4 @@
-let SmeltSchema = ./imports/core/Schema.dhall
+let smelt = ./imports/Smelt.dhall
 
 let pkg = [{
     art=["target/debug/smelt"],
@@ -6,4 +6,4 @@ let pkg = [{
     cmd=["cargo build"]
 }]
 
-in { version="testing", package=pkg } : SmeltSchema
+in { version="testing", package=pkg } : smelt.core.Schema

@@ -7,16 +7,16 @@ let spaceJoin = ../../imports/util/spaceJoin.dhall
 let compile_object =
       \(name : Text) ->
       \(headers : List Text) ->
-        let out = "${name}.o"
+        let out = "bin/${name}.o"
 
         let main = "${name}.c"
 
         in  { art = [ out ]
             , src = [ main ] # headers
-            , cmd = [ "gcc -c ${name}.c -o ${out}" ]
+            , cmd = [ "mkdir -p bin/", "gcc -c ${name}.c -o ${out}" ]
             }
 
-let objs = [ "main.o", "lib.o", "config.o" ]
+let objs = [ "bin/main.o", "bin/lib.o", "bin/config.o" ]
 
 {- approach #1 -}
 let pkg1 =
