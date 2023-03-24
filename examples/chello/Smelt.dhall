@@ -4,13 +4,11 @@ let gcc = ../../imports/tool/gcc/gcc.dhall
 let Binary = ../../imports/tool/gcc/Binary.dhall
 let Library = ../../imports/tool/gcc/Library.dhall
 
-let objs = [ "main.o", "lib.o", "config.o" ]
-
-let pkg1 = [
+in { version = "testing", package = [
 
 gcc Binary :: {
   output = Some "hello",
-  files = objs, 
+  files = [ "main.o", "lib.o", "config.o" ], 
 },
 
 gcc Library :: {
@@ -28,6 +26,4 @@ gcc Library :: {
   addsrc = [ "config.h" ]
 }
 
-]
-
-in  { version = "testing", package = pkg1 } : SmeltSchema
+]} : SmeltSchema

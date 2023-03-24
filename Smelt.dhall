@@ -1,9 +1,14 @@
-let smelt = ./imports/Smelt.dhall
+let smelt = ./imports/package.dhall
+let Schema = smelt.core.Schema
+let Build = smelt.util.Build
 
-let pkg = [{
-    art=["target/debug/smelt"],
-    src=["cli/main.rs", "Cargo.toml", "Cargo.lock"],
-    cmd=["cargo build"]
-}]
 
-in { version="testing", package=pkg } : smelt.core.Schema
+in { version="testing", package=[
+
+Build :: {
+    art=[ "target/release/smelt" ],
+    src=[ "cli/main.rs", "Cargo.toml", "Cargo.lock" ],
+    cmd=[ "cargo build" ]
+},
+
+] } : Schema
