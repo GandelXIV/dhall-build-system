@@ -15,57 +15,58 @@ const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
 
 // Smeltfile types, these model the dhall ones
 
-// imports/SmeltNode.dhall
+// imports/Rule.dhall
 #[derive(Deserialize, Debug)]
-struct Node {
+struct Rule {
     art: Vec<String>,
     src: Vec<String>,
     cmd: Vec<String>,
 }
 
-type ExplodedNode = (Vec<String>, Vec<String>, Vec<String>);
+type ExplodedRule = (Vec<String>, Vec<String>, Vec<String>);
 
-impl Into<ExplodedNode> for Node {
-    fn into(self) -> ExplodedNode {
+impl Into<ExplodedRule> for Rule {
+    fn into(self) -> ExplodedRule {
         (self.art, self.src, self.cmd)
     }
 }
 
-// imports/SmeltSchema.dhall
+// imports/Schema.dhall
 #[derive(Deserialize)]
 struct Schema {
     version: String,
-    package: Vec<Node>,
+    package: Vec<Rule>,
 }
 
 // Build types
+
 #[derive(Debug)]
-struct Rule {
-    run: Vec<String>,
-    deps: Vec<String>,
+struct Node {
+    commands: Vec<String>,
+    sources: Vec<String>,
 }
 
-impl Rule {
-    fn new(run: Vec<String>, deps: Vec<String>) -> Self {
-        Self { run, deps }
+impl Node {
+    fn new(commands: Vec<String>, sources: Vec<String>) -> Self {
+        Self { commands, sources }
     }
 }
 
 // Parsed schema
 #[derive(Debug)]
 struct BuildGraph {
-    tmap: HashMap<String, Rule>,
+    tmap: HashMap<String, Node>,
 }
 
 impl From<Schema> for BuildGraph {
     fn from(schema: Schema) -> Self {
         let mut tmap = HashMap::with_capacity(schema.package.len());
-        for node in schema.package.into_iter() {
-            let (artifacts, sources, commands) = node.into();
+        for rule in schema.package.into_iter() {
+            let (artifacts, sources, commands) = rule.into();
             for out in artifacts.into_iter() {
                 // not the most efficient way of doing this because we copy `sources` and `commands` a bunch of times,
                 // instead of storing a ref to them or something
-                tmap.insert(out, Rule::new(commands.clone(), sources.clone()));
+                tmap.insert(out, Node::new(commands.clone(), sources.clone()));
             }
         }
         BuildGraph { tmap }
@@ -76,16 +77,16 @@ impl BuildGraph {
     fn resolve(&self, target: &str) -> Result<Vec<u8>, anyhow::Error> {
         match self.tmap.get(target) {
             // artifact source
-            Some(rule) => {
+            Some(node) => {
                 println!("[CHECKING ARTIFACT] {}", target);
                 // compute the current input signature
 
                 let mut input_hashes = vec![];
-                for dep in rule.deps.iter() { // read all dependencies, can be slow
+                for dep in node.sources.iter() { // read all dependencies, can be slow
                     input_hashes.append(&mut self.resolve(dep)?);
                 }
                 // using the commands as an input makes the builds more correct
-                input_hashes.append(&mut get_signature(rule.run.join("")));
+                input_hashes.append(&mut get_signature(node.commands.join("")));
                 let current_sign = get_signature(input_hashes);
 
                 // find its token that holds the previous sign
@@ -106,7 +107,7 @@ impl BuildGraph {
                 // check if out-of-date
                 if current_sign != past_sign || fs::metadata(target).is_err() {
                     println!("[BUILDING] {}", target);
-                    exec(&rule.run)?;
+                    exec(&node.commands)?;
                     fs::write(token, current_sign)?;
                 } else {
                     // if up-to-date
@@ -162,6 +163,7 @@ fn main() {
         println!("[ERROR] No targets specified!");
         return;
     }
+    // build all args excepts first
     for (i, argument) in std::env::args().enumerate() {
         if i != 0 {
             graph.build(&argument).unwrap();

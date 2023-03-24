@@ -1,7 +1,10 @@
-{- List of targets to build -}
+{- 
+    List of targets to build.
+    Provide a context for creating build graphs.
+-}
 
-let SmeltNode = ./Node.dhall
+let Rule = ./Rule.dhall
 
-let SmeltPackage: Type = List SmeltNode
+let Package: Type = List Rule
 
-in SmeltPackage
+in Package

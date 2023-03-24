@@ -1,9 +1,9 @@
-let Node = ./Node.dhall
+let Rule = ./Rule.dhall
 let Package = ./Package.dhall
 let Schema = ./Schema.dhall
 
 in {
-    Node,
+    Rule,
     Package,
     Schema
 }

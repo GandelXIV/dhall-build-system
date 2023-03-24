@@ -29,18 +29,5 @@ let pkg1 =
       , compile_object "config" [ "config.h" ]
       ]
 
-{- apporach #2 -}
-let expand = ../../imports/util/expand.dhall
 
-let pkg2 =
-      expand
-        { art = [ "hello" ]
-        , cmd = [ "gcc ${spaceJoin objs} -o hello" ]
-        , src =
-          [ compile_object "main" [ "lib.h", "config.h" ]
-          , compile_object "lib" [ "lib.h" ]
-          , compile_object "config" [ "config.h" ]
-          ]
-        }
-
-in  { version = "testing", package = pkg2 } : SmeltSchema
+in  { version = "testing", package = pkg1 } : SmeltSchema

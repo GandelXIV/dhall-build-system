@@ -1,16 +1,16 @@
 {-
-    Implementation of the builder pattern for Nodes.
+    Implementation of the builder pattern for Rules.
     Takes same arguments as a regular Node except all fields are optional.
 -}
 
-let Node = ../core/Node.dhall
+let Rule = ../core/Rule.dhall
 
 let T: Type = List Text
 
 let empty = [] : T
 
 let build = {
-    Type = Node,
+    Type = Rule,
     default = {
         art = empty,
         src = empty,

@@ -7,11 +7,14 @@
     Evaluates to:
     "ld foo.o bar.o clam.o "
 -}
+
 let spaceJoin =
       λ(list : List Text) →
         List/fold Text list Text (λ(x : Text) → λ(y : Text) → "${x} ${y}") ""
 
+
 let _example0 = assert : spaceJoin [ "a", "b", "c" ] ≡ "a b c "
+
 
 let _objects = [ "foo.o", "lib.o", "clam.o" ]
 
@@ -28,5 +31,6 @@ let _example1 =
           , src = [ "foo.o", "lib.o", "clam.o" ]
           , cmd = [ "gcc foo.o lib.o clam.o  -o app" ]
           }
+
 
 in  spaceJoin

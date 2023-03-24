@@ -1,6 +1,5 @@
-{- Main type for Smelt.dhall -}
+{- Main type for Smeltfiles -}
 
-let SmeltNode = ./Node.dhall
 let SmeltPackage = ./Package.dhall
 
 {- Currently, only the "testing" version is supported -}
