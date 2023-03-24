@@ -1,6 +1,6 @@
 let SmeltSchema = ../../imports/core/Schema.dhall
 
-let build =
+let create =
       \(target : Text) ->
         let input = "src/${target}.c"
 
@@ -9,6 +9,6 @@ let build =
             , cmd = [ "gcc ${input} -o ${target}" ]
             }
 
-let pkg = [ build "hello", build "cat", build "demo" ]
+let pkg = [ create "hello", create "cat", create "demo" ]
 
 in  { version = "testing", package = pkg } : SmeltSchema
