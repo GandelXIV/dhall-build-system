@@ -1,1 +1,1 @@
-rm bin/* hello
+rm -f *.o hello

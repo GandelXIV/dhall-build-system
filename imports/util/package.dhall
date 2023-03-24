@@ -1,7 +1,7 @@
 let workdir = ./workdir.dhall
 let spaceJoin = ./spaceJoin.dhall
 let artifacts = ./getArtifacts.dhall
-let build = ./build.dhall
+let Build = ./Build.dhall
 
 -- deprecated
 --let expand = ./expand.dhall
@@ -11,5 +11,5 @@ in {
     workdir,
     spaceJoin,
     artifacts,
-    build
+    Build
 }

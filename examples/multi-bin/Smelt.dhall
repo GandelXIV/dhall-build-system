@@ -1,14 +1,24 @@
 let SmeltSchema = ../../imports/core/Schema.dhall
 
-let create =
-      \(target : Text) ->
-        let input = "src/${target}.c"
+let Rule = ../../imports/core/Rule.dhall
 
-        in  { art = [ target ]
-            , src = [ input ]
-            , cmd = [ "gcc ${input} -o ${target}" ]
-            }
+let gcc = ../../imports/tool/gcc/gcc.dhall
 
-let pkg = [ create "hello", create "cat", create "demo" ]
+let Binary = ../../imports/tool/gcc/Binary.dhall
 
-in  { version = "testing", package = pkg } : SmeltSchema
+let List/map =
+      https://raw.githubusercontent.com/dhall-lang/dhall-lang/v21.1.0/Prelude/List/map.dhall
+
+let targets = [ "cat", "demo", "hello" ]
+
+in    { version = "testing"
+      , package =
+          List/map
+            Text
+            Rule
+            ( \(t : Text) ->
+                gcc Binary::{ output = Some t, files = [ "src/${t}.c" ] }
+            )
+            targets
+      }
+    : SmeltSchema

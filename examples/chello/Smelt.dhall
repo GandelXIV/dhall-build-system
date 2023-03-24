@@ -1,40 +1,32 @@
 {- imports -}
 let SmeltSchema = ../../imports/core/Schema.dhall
+let gcc = ../../imports/tool/gcc/gcc.dhall
+let Binary = ../../imports/tool/gcc/Binary.dhall
+let Library = ../../imports/tool/gcc/Library.dhall
 
-let spaceJoin = ../../imports/util/spaceJoin.dhall
+let objs = [ "main.o", "lib.o", "config.o" ]
 
-let build = ../../imports/util/build.dhall
-
-
-{- Builds an object file with gcc -}
-let compile_object =
-      \(name : Text) ->
-      \(headers : List Text) ->
-        let out = "bin/${name}.o"
-
-        let main = "${name}.c"
-
-        in  { art = [ out ]
-            , src = [ main ] # headers
-            , cmd = [ "mkdir -p bin/", "gcc -c ${name}.c -o ${out}" ]
-            }
-
-let objs = [ "bin/main.o", "bin/lib.o", "bin/config.o" ]
-
-{- approach #1 -}
 let pkg1 = [
 
-  build::{ 
-    art = [ "hello" ], 
-    src = objs, 
-    cmd = [ "gcc ${spaceJoin objs} -o hello" ]
-  },
+gcc Binary :: {
+  output = Some "hello",
+  files = objs, 
+},
 
-  compile_object "main" [ "lib.h", "config.h" ],
+gcc Library :: {
+  files = [ "main.c" ],
+  addsrc = [ "lib.h", "config.h" ]
+},
 
-  compile_object "lib" [ "lib.h" ],
-  
-  compile_object "config" [ "config.h" ]
+gcc Library :: {
+  files = [ "lib.c" ],
+  addsrc = [ "lib.h" ]
+},
+
+gcc Library :: {
+  files = [ "config.c" ],
+  addsrc = [ "config.h" ]
+}
 
 ]
 

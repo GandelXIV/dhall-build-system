@@ -21,4 +21,4 @@ let _example0 =
         ===  [ "cd project/ && ./configure", "cd project/ && make" ]
 
 
-in  workdir
+in workdir
