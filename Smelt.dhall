@@ -8,7 +8,7 @@ in { version="testing", package=[
 Build :: {
     art=[ "target/release/smelt" ],
     src=[ "cli/main.rs", "Cargo.toml", "Cargo.lock" ],
-    cmd=[ "cargo build" ]
+    cmd=[ "cargo build --release" ]
 },
 
 ] } : Schema
