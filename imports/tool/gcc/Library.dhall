@@ -1,7 +1,7 @@
-let Config = ./Config.dhall
+let ToolRule = ./ToolRule.dhall
 
 let Library = {
-    Type = Config,
+    Type = ToolRule,
     default = {
         object = True,
         output = None Text,

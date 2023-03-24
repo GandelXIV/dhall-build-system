@@ -1,11 +1,11 @@
 let gcc = ./gcc.dhall
-let Config = ./Config.dhall
+let ToolRule = ./ToolRule.dhall
 let Binary = ./Binary.dhall
 let Library = ./Library.dhall
 
 in {
     gcc,
-    Config,
+    ToolRule,
     Binary,
-    Library
+    Library,
 }

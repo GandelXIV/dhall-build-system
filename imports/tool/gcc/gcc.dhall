@@ -3,7 +3,7 @@
 -}
 let Build = ../../util/Build.dhall
 
-let Config = ./Config.dhall
+let ToolRule = ./ToolRule.dhall
 
 let spaceJoin = ../../util/spaceJoin.dhall
 
@@ -11,7 +11,7 @@ let replace =
       https://raw.githubusercontent.com/dhall-lang/dhall-lang/v21.1.0/Prelude/Text/replace.dhall
 
 let gcc =
-      \(conf : Config) ->
+      \(conf : ToolRule) ->
         let cmd =
                   "gcc ${spaceJoin conf.files}"
               ++  (if conf.object then "-c " else "")

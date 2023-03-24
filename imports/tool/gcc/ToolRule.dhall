@@ -6,11 +6,11 @@
     addsrc > additional sources
 -}
 
-let Config: Type =  {
+let ToolRule: Type =  {
     files: List Text,
     object: Bool,
     output: Optional Text,
     addsrc: List Text,
 }
 
-in Config
+in ToolRule

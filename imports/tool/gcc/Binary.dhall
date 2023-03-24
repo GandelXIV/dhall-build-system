@@ -1,7 +1,7 @@
-let Config = ./Config.dhall
+let ToolRule = ./ToolRule.dhall
 
 let Binary = {
-    Type = Config,
+    Type = ToolRule,
     default = {
         object = False,
         output = None Text,
