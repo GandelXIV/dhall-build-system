@@ -34,11 +34,37 @@ impl Into<ExplodedRule> for Rule {
     }
 }
 
+impl Into<ExplodedRule> for &Rule {
+    fn into(self) -> ExplodedRule {
+        (self.art.clone(), self.src.clone(), self.cmd.clone())
+    }
+}
+
 // imports/Schema.dhall
 #[derive(Deserialize)]
 struct Schema {
     version: String,
     package: Vec<Rule>,
+}
+
+impl Schema {
+    // Convert into a stand-alone Makefile.
+    // Note that many smelt-specific behaviour will be lost.
+    fn into_gnumake(&self) -> String {
+        let mut makefile = String::new();
+        for rule in &self.package {
+            let (artifacts, sources, commands) : ExplodedRule = rule.into();
+            let name = artifacts.join(" ");
+            let deps = sources.join(" ");
+            let recp = commands.join("\n\t");
+            makefile.push_str( 
+                &format!("{name}: {deps}\n\t{recp}")
+            );
+            makefile.push('\n');
+            makefile.push('\n');
+        }
+        makefile
+    }
 }
 
 // Build types
@@ -188,6 +214,7 @@ fn main() {
             schema.version, VERSION
         );
     }
+//    fs::write("Makefile", schema.into_gnumake()).unwrap();
 
     let graph = BuildGraph::from(schema);
 
