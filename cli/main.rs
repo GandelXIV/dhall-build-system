@@ -1,17 +1,20 @@
 use serde::Deserialize;
 use serde_dhall;
+use serde_json;
+use std::fs;
 use std::io::Write;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{self, collections::HashMap};
-use std::fs;
 
 type Constr = &'static str;
 
 const VERSION: Constr = "testing";
-const SMELT_FILE: Constr = "Smelt.dhall";
 const SMELT_STORE: Constr = ".smelt/";
 const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
+const SMELT_FILE: Constr = "Smelt.dhall";
+const SMELT_FINAL_FILE: Constr = ".smelt/Smelt.json";
 
 // Smeltfile types, these model the dhall ones
 
@@ -82,7 +85,8 @@ impl BuildGraph {
                 // compute the current input signature
 
                 let mut input_hashes = vec![];
-                for dep in node.sources.iter() { // read all dependencies, can be slow
+                for dep in node.sources.iter() {
+                    // read all dependencies, can be slow
                     input_hashes.append(&mut self.resolve(dep)?);
                 }
                 // using the commands as an input makes the builds more correct
@@ -91,7 +95,10 @@ impl BuildGraph {
 
                 // find its token that holds the previous sign
                 // .smelt/sign/{full-filename-and-path}.md5
-                let mut token = Path::new(SMELT_STORE).join("sign/").join(&target).into_os_string();
+                let mut token = Path::new(SMELT_STORE)
+                    .join("sign/")
+                    .join(&target)
+                    .into_os_string();
                 token.push(".md5");
                 let token = PathBuf::from(token);
 
@@ -144,21 +151,41 @@ fn exec(script: &[String]) -> Result<(), anyhow::Error> {
         let out = Command::new("sh").arg("-c").arg(line).output()?;
         std::io::stdout().write_all(&out.stdout)?;
         std::io::stderr().write_all(&out.stderr)?;
+        assert!(out.status.success());
     }
     Ok(())
 }
 
 fn main() {
-    let schema: Schema = serde_dhall::from_file(SMELT_FILE)
-        .parse()
-        .expect(ERROR_PARSE_SMELTFILE);
+    // dhall schema gets compiled down to JSON
+    // This is also inremental & minimal
+    let jason = if fs::metadata(SMELT_FILE).unwrap().mtime()
+        > fs::metadata(SMELT_FINAL_FILE).unwrap().mtime()
+    {
+        println!("[INFO] Regenerating Schema.json");
+        let build0 = Command::new("dhall-to-json")
+            .arg("--file")
+            .arg(SMELT_FILE)
+            .output()
+            .unwrap();
+        println!("{}", std::str::from_utf8(&build0.stderr).unwrap());
+        assert!(build0.status.success());
+        fs::write(SMELT_FINAL_FILE, &build0.stdout).unwrap();
+        build0.stdout
+    } else {
+        fs::read(SMELT_FINAL_FILE).unwrap()
+    };
+
+    let schema: Schema = serde_json::from_slice(&jason).expect(ERROR_PARSE_SMELTFILE);
     if schema.version != VERSION {
         panic!(
             "Unsupported version '{0}', required '{1}'",
             schema.version, VERSION
         );
     }
+
     let graph = BuildGraph::from(schema);
+
     if std::env::args().len() == 1 {
         println!("[ERROR] No targets specified!");
         return;
@@ -169,5 +196,6 @@ fn main() {
             graph.build(&argument).unwrap();
         }
     }
+
     println!("Done!");
 }

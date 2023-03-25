@@ -1020,6 +1020,7 @@ dependencies = [
  "md5",
  "serde",
  "serde_dhall",
+ "serde_json",
 ]
 
 [[package]]
