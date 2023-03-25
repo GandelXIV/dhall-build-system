@@ -156,12 +156,17 @@ fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+fn get_mtime<P: AsRef<Path>>(p: P) -> i64 {
+    match fs::metadata(p) {
+        Ok(meta) => meta.mtime(),
+        Err(_) => 0,
+    }
+}
+
 fn main() {
     // dhall schema gets compiled down to JSON
     // This is also inremental & minimal
-    let jason = if fs::metadata(SMELT_FILE).unwrap().mtime()
-        > fs::metadata(SMELT_FINAL_FILE).unwrap().mtime()
-    {
+    let jason = if get_mtime(SMELT_FILE) > get_mtime(SMELT_FINAL_FILE) {
         println!("[INFO] Regenerating Schema.json");
         let build0 = Command::new("dhall-to-json")
             .arg("--file")
