@@ -1,11 +1,12 @@
+use clap::{Parser, Subcommand};
 use serde::Deserialize;
-use serde_dhall;
 use serde_json;
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 use std::{self, collections::HashMap};
 
 type Constr = &'static str;
@@ -53,13 +54,11 @@ impl Schema {
     fn into_gnumake(&self) -> String {
         let mut makefile = String::new();
         for rule in &self.package {
-            let (artifacts, sources, commands) : ExplodedRule = rule.into();
+            let (artifacts, sources, commands): ExplodedRule = rule.into();
             let name = artifacts.join(" ");
             let deps = sources.join(" ");
             let recp = commands.join("\n\t");
-            makefile.push_str( 
-                &format!("{name}: {deps}\n\t{recp}")
-            );
+            makefile.push_str(&format!("{name}: {deps}\n\t{recp}"));
             makefile.push('\n');
             makefile.push('\n');
         }
@@ -107,7 +106,6 @@ impl BuildGraph {
         match self.tmap.get(target) {
             // artifact source
             Some(node) => {
-                println!("[CHECKING ARTIFACT] {}", target);
                 // compute the current input signature
 
                 let mut input_hashes = vec![];
@@ -139,18 +137,15 @@ impl BuildGraph {
 
                 // check if out-of-date
                 if current_sign != past_sign || fs::metadata(target).is_err() {
-                    println!("[BUILDING] {}", target);
                     exec(&node.commands)?;
                     fs::write(token, current_sign)?;
                 } else {
                     // if up-to-date
-                    println!("[SKIPPING] {}", target);
                 }
-                println!();
             }
             // raw source
             None => {
-                println!("---> [RETRIEVING SOURCE] {}", target);
+                //println!("---> [RETRIEVING SOURCE] {}", target);
             }
         };
 
@@ -159,7 +154,7 @@ impl BuildGraph {
 
     fn build(&self, target: &str) -> Result<(), anyhow::Error> {
         if !self.tmap.contains_key(target) {
-            let _foo = anyhow::anyhow!("No target {} found", target);
+            return Err(anyhow::anyhow!("No target {} found", target));
         }
         self.resolve(target)?;
         Ok(())
@@ -173,7 +168,7 @@ fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
 
 fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     for line in script {
-        println!("---> [RUNNING] {}", line);
+        println!("{}", line);
         let out = Command::new("sh").arg("-c").arg(line).output()?;
         std::io::stdout().write_all(&out.stdout)?;
         std::io::stderr().write_all(&out.stderr)?;
@@ -189,7 +184,30 @@ fn get_mtime<P: AsRef<Path>>(p: P) -> i64 {
     }
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Generate one or more targets
+    Build {
+        targets: Vec<String>,
+        /// Target all possible artifacts
+        #[arg(short, long)]
+        all: bool,
+    },
+    /// Convert Smeltfile to a Makefile
+    ToMake,
+}
+
 fn main() {
+    let cli = Cli::parse();
+    let start_time = SystemTime::now();
+
     // dhall schema gets compiled down to JSON
     // This is also inremental & minimal
     let jason = if get_mtime(SMELT_FILE) > get_mtime(SMELT_FINAL_FILE) {
@@ -214,20 +232,32 @@ fn main() {
             schema.version, VERSION
         );
     }
-//    fs::write("Makefile", schema.into_gnumake()).unwrap();
 
-    let graph = BuildGraph::from(schema);
+    match &cli.command {
+        Commands::Build { targets, all } => {
+            if targets.len() == 0 && !*all {
+                println!("No targets specified!");
+                return;
+            }
 
-    if std::env::args().len() == 1 {
-        println!("[ERROR] No targets specified!");
-        return;
-    }
-    // build all args excepts first
-    for (i, argument) in std::env::args().enumerate() {
-        if i != 0 {
-            graph.build(&argument).unwrap();
+            let graph = BuildGraph::from(schema);
+
+            if *all {
+                for (target, _) in &graph.tmap {
+                    graph.build(target).unwrap();
+                }
+            } else {
+                for target in targets {
+                    graph.build(&target).unwrap();
+                }
+            }
+            println!(
+                "Finished in {} seconds",
+                start_time.elapsed().unwrap().as_secs_f64()
+            );
+        }
+        Commands::ToMake => {
+            println!("{}", schema.into_gnumake());
         }
     }
-
-    println!("Done!");
 }

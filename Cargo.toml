@@ -11,6 +11,7 @@ path = "cli/main.rs"
 
 [dependencies]
 anyhow = "1.0.69"
+clap = { version = "4.1.13", features = ["derive"] }
 md5 = "0.7.0"
 serde = "1.0.152"
 serde_dhall = "0.12.1"
