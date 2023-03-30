@@ -3,9 +3,15 @@
 let SmeltPackage = ./Package.dhall
 
 {- Currently, only the "testing" version is supported -}
-let SmeltSchema: Type = {
-    version: Text,
-    package: SmeltPackage,
+let Schema = {
+    Type = {
+        version: Text,
+        package: SmeltPackage,
+    },
+    default = {
+        version = "testing",
+        package = [] : SmeltPackage
+    }
 }
 
-in SmeltSchema
+in Schema

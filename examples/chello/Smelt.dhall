@@ -6,7 +6,7 @@ let Binary  = smelt.tool.gcc.Binary
 let Library = smelt.tool.gcc.Library
 
 
-in { version = "testing", package = [
+in SmeltSchema :: { version = "testing", package = [
 
 gcc Binary :: {
   output = Some "hello",
@@ -28,4 +28,4 @@ gcc Library :: {
   addsrc = [ "config.h" ]
 }
 
-]} : SmeltSchema
+]}

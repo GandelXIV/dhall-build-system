@@ -18,4 +18,4 @@ in    { version = "testing"
             )
             targets
       }
-    : SmeltSchema
+    : SmeltSchema.Type

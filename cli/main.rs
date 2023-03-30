@@ -106,6 +106,7 @@ impl BuildGraph {
         match self.tmap.get(target) {
             // artifact source
             Some(node) => {
+                // /*
                 // compute the current input signature
 
                 let mut input_hashes = vec![];
@@ -137,11 +138,13 @@ impl BuildGraph {
 
                 // check if out-of-date
                 if current_sign != past_sign || fs::metadata(target).is_err() {
+                    println!("BUILDING {}", target);
                     exec(&node.commands)?;
                     fs::write(token, current_sign)?;
                 } else {
                     // if up-to-date
                 }
+                // */
             }
             // raw source
             None => {

@@ -10,4 +10,4 @@ Build :: {
     cmd=[ "cargo build --release" ]
 },
 
-] } : Schema
+] } : Schema.Type
