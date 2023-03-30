@@ -138,7 +138,7 @@ impl BuildGraph {
 
                 // check if out-of-date
                 if current_sign != past_sign || fs::metadata(target).is_err() {
-                    println!("BUILDING {}", target);
+                    println!("[BUILDING] {}", target);
                     exec(&node.commands)?;
                     fs::write(token, current_sign)?;
                 } else {
@@ -220,7 +220,7 @@ fn main() {
             .arg(SMELT_FILE)
             .output()
             .unwrap();
-        println!("{}", std::str::from_utf8(&build0.stderr).unwrap());
+        print!("{}", std::str::from_utf8(&build0.stderr).unwrap());
         assert!(build0.status.success());
 
         // create directory to store json
