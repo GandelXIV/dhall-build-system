@@ -219,6 +219,12 @@ fn main() {
             .unwrap();
         println!("{}", std::str::from_utf8(&build0.stderr).unwrap());
         assert!(build0.status.success());
+
+        // create directory to store json
+        // creat_dir_all returns an error if the dir already exists, which we can safely ignore
+        #[allow(unused_must_use)]
+        fs::create_dir_all(SMELT_STORE);
+
         fs::write(SMELT_FINAL_FILE, &build0.stdout).unwrap();
         build0.stdout
     } else {
