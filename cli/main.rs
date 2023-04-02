@@ -1,18 +1,22 @@
 use clap::{Parser, Subcommand};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json;
+use std::ffi::OsString;
 use std::fs;
+use std::future::Future;
 use std::io::Write;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 use std::{self, collections::HashMap};
+use tokio;
 
 type Constr = &'static str;
 
 const VERSION: Constr = "testing";
 const SMELT_STORE: Constr = ".smelt/";
+const SMELT_STATE: Constr = ".smelt/state/";
 const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
 const SMELT_FILE: Constr = "Smelt.dhall";
 const SMELT_FINAL_FILE: Constr = ".smelt/Smelt.json";
@@ -101,78 +105,88 @@ impl From<Schema> for BuildGraph {
     }
 }
 
+// source token
+#[derive(Debug, Serialize, Deserialize)]
+struct SToken {
+    chash: CHash,
+    size: usize,
+}
+
+// artifact token
+#[derive(Debug, Serialize, Deserialize)]
+struct AToken {
+    reciepe: Vec<String>,
+}
+
 impl BuildGraph {
-    fn resolve(&self, target: &str) -> Result<Vec<u8>, anyhow::Error> {
-        match self.tmap.get(target) {
+    async fn resolve(&self, target: String) -> impl Future<Output = anyhow::Result<CHash>> {
+        match self.tmap.get(&target) {
             // artifact source
             Some(node) => {
-                // /*
-                // compute the current input signature
-
-                let mut input_hashes = vec![];
-                for dep in node.sources.iter() {
-                    // read all dependencies, can be slow
-                    input_hashes.append(&mut self.resolve(dep)?);
+                // content hashing can be slow on larger files, so we start the computation early
+                let mut source_chashes = vec![];
+                for s in node.sources.iter() {
+                    source_chashes.push(self.resolve(s.clone()));
                 }
-                // using the commands as an input makes the builds more correct
-                input_hashes.append(&mut get_signature(node.commands.join("")));
-                let current_sign = get_signature(input_hashes);
 
-                // find its token that holds the previous sign
-                // .smelt/sign/{full-filename-and-path}.md5
-                let mut token = Path::new(SMELT_STORE)
-                    .join("sign/")
-                    .join(&target)
-                    .into_os_string();
-                token.push(".md5");
-                let token = PathBuf::from(token);
+                // Fetch past state
 
-                let past_sign = match fs::read(&token) {
-                    Ok(content) => content,
-                    // in case the token doesnt already exist it is generated
-                    Err(_e) => {
-                        fs::create_dir_all(token.parent().unwrap())?;
-                        vec![]
-                    }
-                };
+                let mut atoken = OsString::from(SMELT_STATE);
+                atoken.push(&target);
+                atoken.push(".json");
+                let atoken: AToken = serde_json::from_slice(
+                    &fs::read(atoken).expect("Could not read artifact token {atoken}"),
+                )
+                .expect("Could not parse artifact token {atoken}");
 
-                // check if out-of-date
-                if current_sign != past_sign || fs::metadata(target).is_err() {
-                    println!("[BUILDING] {}", target);
-                    exec(&node.commands)?;
-                    fs::write(token, current_sign)?;
-                } else {
-                    // if up-to-date
+                let mut stokens: HashMap<&str, SToken> = HashMap::new();
+                for source in node.sources.iter() {
+                    let mut tokename = OsString::from(&target);
+                    tokename.push(".json");
+                    let mut spath = PathBuf::from(SMELT_STATE).join(&target).join(tokename);
+                    stokens.insert(
+                        source,
+                        serde_json::from_slice(
+                            &fs::read(spath).expect("Could not read source token {spath}"),
+                        )
+                        .expect("Could not parse source token {spath}"),
+                    );
                 }
-                // */
+
+                // Fetch current state
+
+                
             }
             // raw source
             None => {
                 //println!("---> [RETRIEVING SOURCE] {}", target);
             }
         };
-
-        Ok(get_signature(fs::read(target)?))
+        content_hash(target)
     }
 
-    fn build(&self, target: &str) -> Result<(), anyhow::Error> {
-        if !self.tmap.contains_key(target) {
+    async fn build(&self, target: String) -> Result<(), anyhow::Error> {
+        if !self.tmap.contains_key(&target) {
             return Err(anyhow::anyhow!("No target {} found", target));
         }
-        self.resolve(target)?;
+        let finale = self.resolve(target).await.await?;
         Ok(())
     }
 }
 
-fn get_signature<T: AsRef<[u8]>>(data: T) -> Vec<u8> {
-    let x: [u8; 16] = md5::compute(data).into();
-    Vec::from(x)
+// stands for Content HASH, aliased in case we change hash formats
+type CHash = [u8; 16];
+
+// returns an empty vector on error
+async fn content_hash<P: AsRef<Path>>(filename: P) -> Result<CHash, anyhow::Error> {
+    let data = fs::read(filename)?;
+    Ok(md5::compute(data).into())
 }
 
 fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     for line in script {
         println!("{}", line);
-        let out = Command::new("sh").arg("-c").arg(line).output()?;
+        let out = Command::new("bash").arg("-c").arg(line).output()?;
         std::io::stdout().write_all(&out.stdout)?;
         std::io::stderr().write_all(&out.stderr)?;
         assert!(out.status.success());
@@ -207,9 +221,14 @@ enum Commands {
     ToMake,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     let start_time = SystemTime::now();
+
+    //    exec(&["echo $PATH".to_string()]);
+    //    exec(&["echo PATH".to_string()]);
+    //    exec(&["DOG=yo echo $DOG".to_string()]);
 
     // dhall schema gets compiled down to JSON
     // This is also inremental & minimal
