@@ -11,6 +11,7 @@ use std::process::Command;
 use std::time::SystemTime;
 use std::{self, collections::HashMap};
 use tokio;
+use dashmap::DashMap;
 
 type Constr = &'static str;
 
@@ -85,9 +86,10 @@ impl Node {
 }
 
 // Parsed schema
-#[derive(Debug)]
 struct BuildGraph {
     tmap: HashMap<String, Node>,
+    // content hash bakery kekw
+    chb: DashMap<String, Box<dyn Future<Output = anyhow::Result<CHash>>>>
 }
 
 impl From<Schema> for BuildGraph {
@@ -101,7 +103,8 @@ impl From<Schema> for BuildGraph {
                 tmap.insert(out, Node::new(commands.clone(), sources.clone()));
             }
         }
-        BuildGraph { tmap }
+        let chb = DashMap::new();
+        BuildGraph { tmap, chb }
     }
 }
 
@@ -154,8 +157,6 @@ impl BuildGraph {
                 }
 
                 // Fetch current state
-
-                
             }
             // raw source
             None => {
@@ -166,6 +167,7 @@ impl BuildGraph {
     }
 
     async fn build(&self, target: String) -> Result<(), anyhow::Error> {
+        // content hash bakery lol
         if !self.tmap.contains_key(&target) {
             return Err(anyhow::anyhow!("No target {} found", target));
         }
