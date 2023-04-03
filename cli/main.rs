@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::ffi::OsString;
@@ -11,7 +12,6 @@ use std::process::Command;
 use std::time::SystemTime;
 use std::{self, collections::HashMap};
 use tokio;
-use dashmap::DashMap;
 
 type Constr = &'static str;
 
@@ -89,7 +89,7 @@ impl Node {
 struct BuildGraph {
     tmap: HashMap<String, Node>,
     // content hash bakery kekw
-    chb: DashMap<String, Box<dyn Future<Output = anyhow::Result<CHash>>>>
+    chb: DashMap<String, Box<dyn Future<Output = anyhow::Result<CHash>>>>,
 }
 
 impl From<Schema> for BuildGraph {
@@ -115,21 +115,36 @@ struct SToken {
     size: usize,
 }
 
+impl Default for SToken {
+    fn default() -> Self {
+        Self {
+            chash: [0; 16],
+            size: 0,
+        }
+    }
+}
+
 // artifact token
 #[derive(Debug, Serialize, Deserialize)]
 struct AToken {
     reciepe: Vec<String>,
 }
 
+impl Default for AToken {
+    fn default() -> Self {
+        Self { reciepe: vec![] }
+    }
+}
+
 impl BuildGraph {
-    async fn resolve(&self, target: String) -> impl Future<Output = anyhow::Result<CHash>> {
+    async fn resolve(&self, target: String) {
+        println!("[ RESOLVE ] {}", target);
         match self.tmap.get(&target) {
             // artifact source
             Some(node) => {
-                // content hashing can be slow on larger files, so we start the computation early
-                let mut source_chashes = vec![];
+                // rebuild sources & their respective hashes
                 for s in node.sources.iter() {
-                    source_chashes.push(self.resolve(s.clone()));
+                    self.resolve(s.clone());
                 }
 
                 // Fetch past state
@@ -137,10 +152,11 @@ impl BuildGraph {
                 let mut atoken = OsString::from(SMELT_STATE);
                 atoken.push(&target);
                 atoken.push(".json");
-                let atoken: AToken = serde_json::from_slice(
-                    &fs::read(atoken).expect("Could not read artifact token {atoken}"),
-                )
-                .expect("Could not parse artifact token {atoken}");
+                let atoken: AToken = match &fs::read(atoken) {
+                    Ok(data) => serde_json::from_slice(data)
+                        .expect("Could not parse artifact token {atoken}"),
+                    Err(_) => AToken::default(),
+                };
 
                 let mut stokens: HashMap<&str, SToken> = HashMap::new();
                 for source in node.sources.iter() {
@@ -149,21 +165,33 @@ impl BuildGraph {
                     let mut spath = PathBuf::from(SMELT_STATE).join(&target).join(tokename);
                     stokens.insert(
                         source,
-                        serde_json::from_slice(
-                            &fs::read(spath).expect("Could not read source token {spath}"),
-                        )
-                        .expect("Could not parse source token {spath}"),
+                        match &fs::read(spath) {
+                            Ok(data) => serde_json::from_slice(data)
+                                .expect("Could not parse source token {spath}"),
+                            Err(_) => SToken::default(),
+                        },
                     );
                 }
 
-                // Fetch current state
+                // Check with current state
+
+                println!("[ SOFTCHECK ] {}", target);
+                // TODO: check rebuild with .all() on stokens
             }
             // raw source
             None => {
                 //println!("---> [RETRIEVING SOURCE] {}", target);
             }
         };
-        content_hash(target)
+        self.qchash(target);
+    }
+
+    fn qchash(&self, target: String) {
+        if !self.chb.contains_key(&target) {
+            println!("[ QCHASH ] {}", target);
+            self.chb
+                .insert(target.to_string(), Box::new(content_hash(target)));
+        }
     }
 
     async fn build(&self, target: String) -> Result<(), anyhow::Error> {
@@ -171,7 +199,7 @@ impl BuildGraph {
         if !self.tmap.contains_key(&target) {
             return Err(anyhow::anyhow!("No target {} found", target));
         }
-        let finale = self.resolve(target).await.await?;
+        let finale = self.resolve(target).await;
         Ok(())
     }
 }
@@ -274,11 +302,11 @@ async fn main() {
 
             if *all {
                 for (target, _) in &graph.tmap {
-                    graph.build(target).unwrap();
+                    graph.build(target.to_string()).await.unwrap();
                 }
             } else {
                 for target in targets {
-                    graph.build(&target).unwrap();
+                    graph.build(target.to_string()).await.unwrap();
                 }
             }
             println!(
