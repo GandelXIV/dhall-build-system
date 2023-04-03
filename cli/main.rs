@@ -14,7 +14,7 @@ type Constr = &'static str;
 const VERSION: Constr = "testing";
 const SMELT_STORE: Constr = ".smelt/";
 const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
-const SMELT_FILE: Constr = "Smelt.dhall";
+const SMELT_FILE: Constr = "SMELT.dhall";
 const SMELT_FINAL_FILE: Constr = ".smelt/Smelt.json";
 
 // Smeltfile types, these model the dhall ones
