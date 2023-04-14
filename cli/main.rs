@@ -1,3 +1,4 @@
+use async_recursion::async_recursion;
 use clap::{Parser, Subcommand};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -19,7 +20,7 @@ const VERSION: Constr = "testing";
 const SMELT_STORE: Constr = ".smelt/";
 const SMELT_STATE: Constr = ".smelt/state/";
 const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
-const SMELT_FILE: Constr = "Smelt.dhall";
+const SMELT_FILE: Constr = "SMELT.dhall";
 const SMELT_FINAL_FILE: Constr = ".smelt/Smelt.json";
 
 // Smeltfile types, these model the dhall ones
@@ -109,14 +110,21 @@ impl From<Schema> for BuildGraph {
     }
 }
 
-// source token
-#[derive(Debug, Serialize, Deserialize)]
-struct SToken {
-    chash: CHash,
-    size: usize,
+
+// All dependency state
+// tokens store previous dependency state in small files
+struct State<'a> {
+    meta: MetaToken,
+    srcs: HashMap<&'a str, SourceToken>
 }
 
-impl Default for SToken {
+#[derive(Debug, Serialize, Deserialize)]
+struct SourceToken {
+    chash: CHash,
+    size: u64, // actually length
+}
+
+impl Default for SourceToken {
     fn default() -> Self {
         Self {
             chash: [0; 16],
@@ -125,59 +133,69 @@ impl Default for SToken {
     }
 }
 
-// artifact token
 #[derive(Debug, Serialize, Deserialize)]
-struct AToken {
+struct MetaToken {
     reciepe: Vec<String>,
 }
 
-impl Default for AToken {
+impl Default for MetaToken {
     fn default() -> Self {
         Self { reciepe: vec![] }
     }
 }
 
+
+impl Drop for BuildGraph {
+    fn drop(&mut self) {
+        todo!("Flush chash DAG to .smelt");
+    }
+}
+
 impl BuildGraph {
+    #[async_recursion(?Send)]
     async fn resolve(&self, target: String) {
         println!("[ RESOLVE ] {}", target);
         match self.dag.get(&target) {
             // artifact source
             Some(node) => {
-                // rebuild sources & their respective hashes
+                // rebuild sources & start baking their respective hashes
                 for s in node.sources.iter() {
-                    self.resolve(s.clone());
+                    self.resolve(s.clone()).await;
                 }
 
                 // Fetch past state
 
-                let mut atoken = OsString::from(SMELT_STATE);
-                atoken.push(&target);
-                atoken.push(".json");
-                let atoken: AToken = match &fs::read(atoken) {
-                    Ok(data) => serde_json::from_slice(data)
-                        .expect("Could not parse artifact token {atoken}"),
-                    Err(_) => AToken::default(),
+                let mut path2metatoken = OsString::from(SMELT_STATE);
+                path2metatoken.push(&target);
+                path2metatoken.push(".json");
+                let mtoken: MetaToken = match &fs::read(&path2metatoken) {
+                    Ok(data) => {
+                        serde_json::from_slice(data).expect("Could not parse artifact token")
+                    }
+                    Err(_) => MetaToken::default(),
                 };
 
-                let mut stokens: HashMap<&str, SToken> = HashMap::new();
+                let mut stokens: HashMap<&str, SourceToken> = HashMap::new();
                 for source in node.sources.iter() {
                     let mut tokename = OsString::from(&target);
                     tokename.push(".json");
-                    let mut spath = PathBuf::from(SMELT_STATE).join(&target).join(tokename);
+                    let spath = PathBuf::from(SMELT_STATE).join(&target).join(tokename);
                     stokens.insert(
                         source,
                         match &fs::read(spath) {
-                            Ok(data) => serde_json::from_slice(data)
-                                .expect("Could not parse source token {spath}"),
-                            Err(_) => SToken::default(),
+                            Ok(data) => {
+                                serde_json::from_slice(data).expect("Could not parse source token")
+                            }
+                            Err(_) => SourceToken::default(),
                         },
                     );
                 }
 
-                // Check with current state
+                let past = State {
+                    meta: mtoken,
+                    srcs: stokens
+                };
 
-                println!("[ SOFTCHECK ] {}", target);
-                // TODO: check rebuild with .all() on stokens
             }
             // raw source
             None => {
@@ -216,7 +234,7 @@ async fn content_hash<P: AsRef<Path>>(filename: P) -> Result<CHash, anyhow::Erro
 
 fn exec(script: &[String]) -> Result<(), anyhow::Error> {
     for line in script {
-        println!("{}", line);
+        println!("RUN {}", line);
         let out = Command::new("bash").arg("-c").arg(line).output()?;
         std::io::stdout().write_all(&out.stdout)?;
         std::io::stderr().write_all(&out.stderr)?;
