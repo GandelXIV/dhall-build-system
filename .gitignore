@@ -2,3 +2,4 @@
 .smelt/
 concept/
 .history
+python/__pycache__/

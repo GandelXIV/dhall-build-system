@@ -211,15 +211,21 @@ fn main() {
     let cli = Cli::parse();
     let start_time = SystemTime::now();
 
-    // dhall schema gets compiled down to JSON
-    // This is also inremental & minimal
+    // schema gets compiled down to JSON
+    // This is also incremental & minimal, although it uses modification time
     let jason = if get_mtime(SMELT_FILE) > get_mtime(SMELT_FINAL_FILE) {
         println!("[INFO] Regenerating Schema.json");
-        let build0 = Command::new("dhall-to-json")
-            .arg("--file")
-            .arg(SMELT_FILE)
-            .output()
-            .unwrap();
+        let build0 = if SMELT_FILE.ends_with(".dhall") {
+            Command::new("dhall-to-json")
+                .arg("--file")
+                .arg(SMELT_FILE)
+                .output()
+                .unwrap()
+        } else if SMELT_FILE.ends_with(".py") {
+            Command::new("python3").arg(SMELT_FILE).output().unwrap()
+        } else {
+            panic!("Unsupported schema extension")
+        };
         print!("{}", std::str::from_utf8(&build0.stderr).unwrap());
         assert!(build0.status.success());
 

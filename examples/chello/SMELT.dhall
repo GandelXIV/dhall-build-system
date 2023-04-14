@@ -1,5 +1,5 @@
 {- imports -}
-let smelt = ../../imports/package.dhall
+let smelt = ../../dhall/package.dhall
 let SmeltSchema = smelt.core.Schema
 let gcc     = smelt.tool.gcc.gcc
 let Binary  = smelt.tool.gcc.Binary

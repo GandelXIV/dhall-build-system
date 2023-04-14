@@ -1,4 +1,4 @@
-let smelt = ../imports/package.dhall
+let smelt = ../dhall/package.dhall
 let module = smelt.util.module
 let Schema = smelt.core.Schema
 

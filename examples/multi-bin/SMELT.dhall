@@ -1,4 +1,4 @@
-let smelt = ../../imports/package.dhall
+let smelt = ../../dhall/package.dhall
 let SmeltSchema = smelt.core.Schema
 let Rule = smelt.core.Rule
 let gcc = smelt.tool.gcc.gcc
