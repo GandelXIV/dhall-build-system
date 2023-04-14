@@ -1,2 +1,3 @@
 *.rs linguist-detectable=true
 *.dhall linguist-language=dhall
+*.py  linguist-language=python
