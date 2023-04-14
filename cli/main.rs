@@ -87,24 +87,25 @@ impl Node {
 
 // Parsed schema
 struct BuildGraph {
-    tmap: HashMap<String, Node>,
+    // https://en.wikipedia.org/wiki/Directed_acyclic_graph
+    dag: HashMap<String, Node>,
     // content hash bakery kekw
     chb: DashMap<String, Box<dyn Future<Output = anyhow::Result<CHash>>>>,
 }
 
 impl From<Schema> for BuildGraph {
     fn from(schema: Schema) -> Self {
-        let mut tmap = HashMap::with_capacity(schema.package.len());
+        let mut dag = HashMap::with_capacity(schema.package.len());
         for rule in schema.package.into_iter() {
             let (artifacts, sources, commands) = rule.into();
             for out in artifacts.into_iter() {
                 // not the most efficient way of doing this because we copy `sources` and `commands` a bunch of times,
                 // instead of storing a ref to them or something
-                tmap.insert(out, Node::new(commands.clone(), sources.clone()));
+                dag.insert(out, Node::new(commands.clone(), sources.clone()));
             }
         }
         let chb = DashMap::new();
-        BuildGraph { tmap, chb }
+        BuildGraph { dag, chb }
     }
 }
 
@@ -139,7 +140,7 @@ impl Default for AToken {
 impl BuildGraph {
     async fn resolve(&self, target: String) {
         println!("[ RESOLVE ] {}", target);
-        match self.tmap.get(&target) {
+        match self.dag.get(&target) {
             // artifact source
             Some(node) => {
                 // rebuild sources & their respective hashes
@@ -196,7 +197,7 @@ impl BuildGraph {
 
     async fn build(&self, target: String) -> Result<(), anyhow::Error> {
         // content hash bakery lol
-        if !self.tmap.contains_key(&target) {
+        if !self.dag.contains_key(&target) {
             return Err(anyhow::anyhow!("No target {} found", target));
         }
         let finale = self.resolve(target).await;
@@ -301,7 +302,7 @@ async fn main() {
             let graph = BuildGraph::from(schema);
 
             if *all {
-                for (target, _) in &graph.tmap {
+                for (target, _) in &graph.dag {
                     graph.build(target.to_string()).await.unwrap();
                 }
             } else {
