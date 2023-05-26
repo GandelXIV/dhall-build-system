@@ -1,6 +1,6 @@
-let smelt = ../dhall/package.dhall
-let module = smelt.util.module
-let Schema = smelt.core.Schema
+let db = ../dhall/package.dhall
+let module = db.util.module
+let Schema = db.core.Schema
 
 in Schema :: { package = [
 

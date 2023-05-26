@@ -1,6 +1,6 @@
-let smelt = ../../dhall/package.dhall
-let Schema = smelt.core.Schema
-let spaceJoin = smelt.util.spaceJoin
+let db = ../../dhall/package.dhall
+let Schema = db.core.Schema
+let spaceJoin = db.util.spaceJoin
 
 let ccobj = 
     \(target : Text) -> 

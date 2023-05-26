@@ -1,5 +1,5 @@
-# This scripts removes all .smelt stores, useful if the resolution algorithm is changed
+# This scripts removes all .build stores, useful if the resolution algorithm is changed
 
-rm -rf .smelt
-rm -rf examples/.smelt
-rm -rf examples/*/.smelt
+rm -rf .build
+rm -rf examples/.build
+rm -rf examples/*/.build

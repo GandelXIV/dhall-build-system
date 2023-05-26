@@ -12,12 +12,12 @@ use std::{self, collections::HashMap};
 type Constr = &'static str;
 
 const VERSION: Constr = "testing";
-const SMELT_STORE: Constr = ".smelt/";
-const ERROR_PARSE_SMELTFILE: Constr = "Could not parse Smeltfile.dhall";
-const SMELT_FILE: Constr = "SMELT.dhall";
-const SMELT_FINAL_FILE: Constr = ".smelt/Smelt.json";
+const BUILD_STORE: Constr = ".build/";
+const ERROR_PARSE_BUILDFILE: Constr = "Could not parse BUILD.dhall";
+const BUILD_FILE: Constr = "BUILD.dhall";
+const BUILD_FINAL_FILE: Constr = ".build/BUILD.json";
 
-// Smeltfile types, these model the dhall ones
+// Buildfile types, these model the dhall ones
 
 // imports/Rule.dhall
 #[derive(Deserialize, Debug)]
@@ -50,7 +50,6 @@ struct Schema {
 
 impl Schema {
     // Convert into a stand-alone Makefile.
-    // Note that many smelt-specific behaviour will be lost.
     fn into_gnumake(&self) -> String {
         let mut makefile = String::new();
         for rule in &self.package {
@@ -119,8 +118,8 @@ impl BuildGraph {
                 let current_sign = get_signature(input_hashes);
 
                 // find its token that holds the previous sign
-                // .smelt/sign/{full-filename-and-path}.md5
-                let mut token = Path::new(SMELT_STORE)
+                // .build/sign/{full-filename-and-path}.md5
+                let mut token = Path::new(BUILD_STORE)
                     .join("sign/")
                     .join(&target)
                     .into_os_string();
@@ -203,7 +202,7 @@ enum Commands {
         #[arg(short, long)]
         all: bool,
     },
-    /// Convert Smeltfile to a Makefile
+    /// Convert Buildfile to a Makefile
     ToMake,
 }
 
@@ -213,16 +212,16 @@ fn main() {
 
     // schema gets compiled down to JSON
     // This is also incremental & minimal, although it uses modification time
-    let jason = if get_mtime(SMELT_FILE) > get_mtime(SMELT_FINAL_FILE) {
+    let jason = if get_mtime(BUILD_FILE) > get_mtime(SMELT_FINAL_FILE) {
         println!("[INFO] Regenerating Schema.json");
-        let build0 = if SMELT_FILE.ends_with(".dhall") {
+        let build0 = if BUILD_FILE.ends_with(".dhall") {
             Command::new("dhall-to-json")
                 .arg("--file")
-                .arg(SMELT_FILE)
+                .arg(BUILD_FILE)
                 .output()
                 .unwrap()
-        } else if SMELT_FILE.ends_with(".py") {
-            Command::new("python3").arg(SMELT_FILE).output().unwrap()
+        } else if BUILD_FILE.ends_with(".py") {
+            Command::new("python3").arg(BUILD_FILE).output().unwrap()
         } else {
             panic!("Unsupported schema extension")
         };
@@ -232,15 +231,15 @@ fn main() {
         // create directory to store json
         // creat_dir_all returns an error if the dir already exists, which we can safely ignore
         #[allow(unused_must_use)]
-        fs::create_dir_all(SMELT_STORE);
+        fs::create_dir_all(BUILD_STORE);
 
-        fs::write(SMELT_FINAL_FILE, &build0.stdout).unwrap();
+        fs::write(BUILD_FINAL_FILE, &build0.stdout).unwrap();
         build0.stdout
     } else {
-        fs::read(SMELT_FINAL_FILE).unwrap()
+        fs::read(BUILD_FINAL_FILE).unwrap()
     };
 
-    let schema: Schema = serde_json::from_slice(&jason).expect(ERROR_PARSE_SMELTFILE);
+    let schema: Schema = serde_json::from_slice(&jason).expect(ERROR_PARSE_BUILDFILE);
     if schema.version != VERSION {
         panic!(
             "Unsupported version '{0}', required '{1}'",

@@ -1,5 +1,5 @@
-import smelt
-from smelt import build
+import dhall
+from dhall import build
 
 build(
     art=["hello"],
@@ -19,4 +19,4 @@ build(
     cmd=["gcc src/demo.c -o demo"]
 )
 
-smelt.generate()
+dhall.generate()

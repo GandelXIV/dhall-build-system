@@ -1,5 +1,5 @@
 {-
-    Create a rule that builds targets from another smeltfile.
+    Create a rule that builds targets from another buildfile.
 -}
 
 let Build = ./Build.dhall
@@ -17,8 +17,8 @@ let module =
                 Text
                 (\(t : Text) -> "${path}/${t}")
                 targets,
-            src = [] : List Text {- Sources are handled by the smeltfile -}, 
-            cmd = workdir path [ "smelt build ${spaceJoin targets}" ],
+            src = [] : List Text {- Sources are handled by the dhall-build -}, 
+            cmd = workdir path [ "dhall-build build ${spaceJoin targets}" ],
         }
 
 let _example0 = assert : 
@@ -26,7 +26,7 @@ let _example0 = assert :
     ===
     Build :: {
       art = [ "project/hello", "project/demo" ]
-    , cmd = [ "cd project && smelt build hello demo " ]
+    , cmd = [ "cd project && dhall-build build hello demo " ]
     , src = [] : List Text
     }
 

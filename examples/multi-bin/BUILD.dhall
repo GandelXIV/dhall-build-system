@@ -1,8 +1,8 @@
-let smelt = ../../dhall/package.dhall
-let SmeltSchema = smelt.core.Schema
-let Rule = smelt.core.Rule
-let gcc = smelt.tool.gcc.gcc
-let Binary = smelt.tool.gcc.Binary
+let db = ../../dhall/package.dhall
+let BuildSchema = db.core.Schema
+let Rule = db.core.Rule
+let gcc = db.tool.gcc.gcc
+let Binary = db.tool.gcc.Binary
 let List/map =
       https://raw.githubusercontent.com/dhall-lang/dhall-lang/v21.1.0/Prelude/List/map.dhall
 
@@ -18,4 +18,4 @@ in    { version = "testing"
             )
             targets
       }
-    : SmeltSchema.Type
+    : BuidlSchema.Type

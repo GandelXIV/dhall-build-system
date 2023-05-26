@@ -1,9 +1,9 @@
 {- imports -}
-let smelt = ../../dhall/package.dhall
-let SmeltSchema = smelt.core.Schema
-let gcc     = smelt.tool.gcc.gcc
-let Binary  = smelt.tool.gcc.Binary
-let Library = smelt.tool.gcc.Library
+let db = ../../dhall/package.dhall
+let SmeltSchema = db.core.Schema
+let gcc     = db.tool.gcc.gcc
+let Binary  = db.tool.gcc.Binary
+let Library = db.tool.gcc.Library
 
 
 in SmeltSchema :: { version = "testing", package = [

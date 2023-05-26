@@ -1,5 +1,5 @@
 /target
-.smelt/
+.build/
 concept/
 .history
 python/__pycache__/
